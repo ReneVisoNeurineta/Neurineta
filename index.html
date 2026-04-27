@@ -2158,15 +2158,47 @@ async function loadDashboard() {
   }
 }
 
+function getRecordDate(r) {
+  // Try dia/mes/anio first (most reliable for imported data)
+  const MESES_MAP = {"Enero":0,"Febrero":1,"Marzo":2,"Abril":3,"Mayo":4,"Junio":5,
+    "Julio":6,"Agosto":7,"Septiembre":8,"Octubre":9,"Noviembre":10,"Diciembre":11};
+  if (r.anio && r.mes) {
+    const m = MESES_MAP[r.mes];
+    if (m !== undefined) {
+      const d = parseInt(r.dia) || 1;
+      const yr = parseInt(r.anio);
+      if (yr > 2000) return new Date(yr, m, d);
+    }
+  }
+  // Fallback: try DD/MM/YYYY format
+  if (r.timestamp) {
+    const parts = r.timestamp.split("/");
+    if (parts.length === 3) {
+      const d = parseInt(parts[0]);
+      const m = parseInt(parts[1]) - 1;
+      const y = parseInt(parts[2]);
+      if (y > 2000) return new Date(y, m, d);
+    }
+    // Try standard JS date parse
+    const ts = new Date(r.timestamp);
+    if (!isNaN(ts)) return ts;
+  }
+  return null;
+}
+
 function filterByPeriod(records) {
   if (dashPeriod === "all") return records;
   const now = new Date();
   return records.filter(r => {
-    const ts = new Date(r.timestamp || "");
-    if (isNaN(ts)) return false;
+    const ts = getRecordDate(r);
+    if (!ts || isNaN(ts)) return false;
+    // Never include future dates
+    if (ts > now) return false;
     const diffMs = now - ts;
     const diffDays = diffMs / (1000*60*60*24);
-    if (dashPeriod === "month") return diffDays <= 31;
+    if (dashPeriod === "month") {
+      return ts.getMonth() === now.getMonth() && ts.getFullYear() === now.getFullYear();
+    }
     if (dashPeriod === "3m") return diffDays <= 92;
     if (dashPeriod === "6m") return diffDays <= 183;
     if (dashPeriod === "year") return ts.getFullYear() === now.getFullYear();
@@ -2186,15 +2218,11 @@ function renderDashboard(allRecords) {
   const compRate = procs.length > 0
     ? Math.round(procs.filter(r => r.comp_tec && r.comp_tec !== "Ninguna").length / procs.length * 100)
     : 0;
-  const MESES_NUM2 = {"Enero":1,"Febrero":2,"Marzo":3,"Abril":4,"Mayo":5,"Junio":6,
-    "Julio":7,"Agosto":8,"Septiembre":9,"Octubre":10,"Noviembre":11,"Diciembre":12};
   const nowD = new Date();
   const thisMonth = procs.filter(r => {
-    const yr = parseInt(r.anio);
-    const mo = MESES_NUM2[r.mes];
-    if (yr && mo) return yr === nowD.getFullYear() && mo === nowD.getMonth()+1;
-    const ts = new Date(r.timestamp||"");
-    return !isNaN(ts) && ts.getMonth() === nowD.getMonth() && ts.getFullYear() === nowD.getFullYear();
+    const ts = getRecordDate(r);
+    return ts && !isNaN(ts) && ts <= nowD &&
+      ts.getMonth() === nowD.getMonth() && ts.getFullYear() === nowD.getFullYear();
   }).length;
 
   document.getElementById("kpi-grid").innerHTML = `
@@ -2228,20 +2256,14 @@ function renderDashboard(allRecords) {
   const nowMonth = new Date().getMonth() + 1;
 
   procs.forEach(r => {
-    let year = parseInt(r.anio) || 0;
-    let month = MESES_NUM[r.mes] || 0;
-    
-    // Fallback to timestamp if no dia/mes/anio
-    if (!year || !month) {
-      const ts = new Date(r.timestamp||"");
-      if (!isNaN(ts)) { year = ts.getFullYear(); month = ts.getMonth()+1; }
-    }
-    
-    // Skip future months
-    if (!year || !month) return;
+    const ts = getRecordDate(r);
+    if (!ts || isNaN(ts) || ts > new Date()) return;
+    const year = ts.getFullYear();
+    const month = ts.getMonth() + 1;
     if (year > nowYear || (year === nowYear && month > nowMonth)) return;
-    
-    const shortMon = MESES_SHORT[r.mes] || String(month).padStart(2,"0");
+    // Get short month name
+    const mesNombre = Object.keys(MESES_SHORT).find(k => MESES_NUM[k] === month) || "";
+    const shortMon = MESES_SHORT[mesNombre] || String(month).padStart(2,"0");
     const key = shortMon + " " + String(year).slice(-2);
     monthCounts[key] = (monthCounts[key]||0) + 1;
   });
