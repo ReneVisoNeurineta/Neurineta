@@ -805,6 +805,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
         <label><input type="checkbox" name="antecedente" value="FA"> FA</label>
         <label><input type="checkbox" name="antecedente" value="ACV previo"> ACV previo</label>
         <label><input type="checkbox" name="antecedente" value="Anticoagulación crónica"> Anticoag. crónica</label>
+        <label><input type="checkbox" name="antecedente" value="Antec. familiar aneurisma"> Antec. familiar aneurisma</label>
       </div>
 
       <div class="divider" style="margin-top:0.5rem"></div>
@@ -977,16 +978,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
           <input type="number" id="contraste" placeholder="ml">
         </div>
       </div>
-      <div class="form-grid form-grid-2" style="margin-bottom:1.5rem">
-        <div class="field">
-          <label>Tiempo de fluoroscopía (min)</label>
-          <input type="number" id="fluoro_time" step="0.1" placeholder="min">
-        </div>
-        <div class="field">
-          <label>Dosis de radiación (mGy)</label>
-          <input type="number" id="dosis" placeholder="mGy">
-        </div>
-      </div>
+
 
       <div class="divider"></div>
       <div class="subsection-title">Dispositivos / Materiales</div>
@@ -1839,13 +1831,15 @@ const DEVICE_CATALOG = {
   "p64 MW (Phenox)": ["2.5x12","2.5x15","2.5x18","2.5x21","2.5x25","3.0x12","3.0x15","3.0x18","3.0x21","3.0x25","3.5x12","3.5x15","3.5x18","3.5x21","3.5x25","4.0x12","4.0x15","4.0x18","4.0x21","4.0x25","4.5x12","4.5x15","4.5x18","4.5x21","4.5x25","5.0x15","5.0x18","5.0x21","5.0x25"],
   "Derivo 2heal (Acandis)": ["2.5x11","2.5x15","2.5x20","2.5x25","3.0x11","3.0x15","3.0x20","3.0x25","3.0x30","3.5x15","3.5x20","3.5x25","3.5x30","3.5x35","4.0x20","4.0x25","4.0x30","4.0x35","4.0x40","4.5x20","4.5x25","4.5x30","4.5x35","4.5x40","4.5x50","5.0x25","5.0x30","5.0x35","5.0x40","5.0x50","6.0x25","6.0x30","6.0x35","6.0x40","6.0x50"],
   "Surpass Elite (Stryker)": ["2.5x12","2.5x20","2.5x25","2.5x30","3.0x12","3.0x20","3.0x25","3.0x30","3.0x40","3.5x12","3.5x20","3.5x25","3.5x30","3.5x40","3.75x12","3.75x20","3.75x25","3.75x30","3.75x40","4.0x20","4.0x25","4.0x30","4.0x40","4.25x20","4.25x25","4.25x30","4.25x40","4.5x20","4.5x25","4.5x30","4.5x40","4.75x20","4.75x25","4.75x30","4.75x40","5.0x20","5.0x25","5.0x30","5.0x40"],
+  "Solitaire AB stent (Medtronic)": ["4x15","4x20","6x20","6x30"],
   "LEO Baby (Balt)": ["2.0x12","2.0x18","2.0x25","2.5x12","2.5x18","2.5x25","2.5x30","2.5x35","3.0x18","3.0x25","3.0x35","3.5x12","3.5x18","3.5x25","3.5x30","3.5x35","3.5x50"],
   "LEO (Balt)": ["4.5x15","4.5x20","4.5x25","4.5x30","4.5x40","4.5x50","4.5x75","5.5x25","5.5x30","5.5x35","5.5x50","5.5x60"],
   "LVIS Jr (MicroVention)": ["2.5x13","2.5x17","2.5x23","3.5x13","3.5x17","3.5x23"],
   "LVIS (MicroVention)": ["3.5x15","3.5x20","3.5x23","3.5x27","3.5x33","4.5x15","4.5x20","4.5x23","4.5x27","4.5x33","5.5x20","5.5x23","5.5x27","5.5x33"],
   "Neuroform Atlas (Stryker)": ["3.0x15","3.0x21","3.0x24","3.0x30","4.0x15","4.0x21","4.0x24","4.0x30","4.5x15","4.5x21","4.5x24","4.5x30"],
   "Accero (Acandis)": ["2.0x10","2.0x15","2.0x20","2.0x25","2.0x30","2.5x10","2.5x15","2.5x20","2.5x25","2.5x30","3.0x10","3.0x15","3.0x20","3.0x25","3.0x30","3.5x10","3.5x15","3.5x20","3.5x25","3.5x30","4.0x10","4.0x15","4.0x20","4.0x25","4.0x30"],
-  "pCONUS 2 (Phenox)": ["Corona 4mm","Corona 5mm","Corona 6mm","Corona 7mm","Corona 8mm","Corona 10mm","Corona 12mm","Corona 15mm"],
+  "pCONUS 2 (Phenox)","pEGASUS (Phenox)": ["Corona 4mm","Corona 5mm","Corona 6mm","Corona 7mm","Corona 8mm","Corona 10mm","Corona 12mm","Corona 15mm"],
+  "pEGASUS (Phenox)": ["2.5x14","2.5x18","2.5x22","3.0x14","3.0x18","3.0x22","3.5x14","3.5x18","3.5x22","4.0x18","4.0x22","4.0x28"],
   "WEB (MicroVention)": ["4x3","5x3","5x4","6x4","6x5","7x5","7x6","8x5","8x6","9x6","9x7","10x7","11x7"],
   "Artisse (Medtronic)": ["__MANUAL__"],
   "Contour (Stryker)": ["__MANUAL__"],
@@ -1875,7 +1869,7 @@ const DEVICE_CATALOG = {
   "Headway 17 (MicroVention)": ["0.017in ID - 150cm Standard","0.017in ID - 150cm Preformado"],
   "Headway 21 (MicroVention)": ["0.021in ID - 150cm"],
   "Headway 27 (MicroVention)": ["0.027in ID - 150cm"],
-  "Rebar 18 (Medtronic)": ["0.017in ID - 150cm"],
+  "Rebar 18 (Medtronic)": ["0.021in ID - 150cm"],
   "Phenom 27 (Medtronic)": ["0.027in ID - 150cm"],
   "Marksman (Medtronic)": ["0.027in ID - 150cm"],
   "Excelsior SL-10 (Stryker)": ["0.0165in ID - 150cm"],
@@ -1893,14 +1887,18 @@ const DEVICE_CATALOG = {
   "Traxcess (Stryker)": ["0.014in - 200cm"],
   "Mirage (Medtronic)": ["0.008in - 200cm","0.012in - 200cm"],
   "Chikai (Asahi)": ["Chikai 008 - 0.008in - 200cm","Chikai Black 14 - 0.014in - 200cm","Chikai Nexus - 0.014in - 200cm"],
-  "Hybrid (Balt)": ["0.007in","0.008in","0.012in","0.014in"],
+  "Hybrid (Balt)": ["Hybrid 007 - 0.007in","Hybrid 008 - 0.008in","Hybrid 012 - 0.012in","Hybrid 014 - 0.014in"],
+  "Xpedion (MicroVention)": ["0.010in - 200cm","0.014in - 200cm"],
   "SQUID (Balt)": ["SQUID 12","SQUID 18","SQUID 34","SQUID Peri 12","SQUID Peri 18","SQUID Peri 34"],
   "Onyx (Medtronic)": ["Onyx 18","Onyx 34"],
   "PHIL (MicroVention)": ["PHIL 25%","PHIL 30%","PHIL 35%"],
   "Coils": ["__MANUAL__"],
-  "Navien (Medtronic)": ["0.058in ID","0.072in ID"],
-  "Benchmark (Penumbra)": ["0.071in ID"],
-  "Fargo / Fargo Max (Balt)": ["Fargo 6F","Fargo Max 6F"],
+  "Navien (Medtronic)": ["0.058in ID - 105cm","0.072in ID - 105cm"],
+  "Ballast (Balt)": ["6F","088"],
+  "Fubuki (Asahi)": ["6F - 90cm","6F - 100cm","088 - 90cm"],
+  "Sofia (MicroVention)": ["Sofia 5F - 0.055in","Sofia Plus 6F - 0.070in"],
+  "Benchmark (Penumbra)": ["0.071in ID - 90cm","0.071in ID - 105cm"],
+  "Fargo / Fargo Max (Balt)": ["Fargo 6F","Fargo Max 6F","Fargo Max 088"],
   "Cerebase DA (Cerenovus)": ["6F"],
   "Otro": ["__MANUAL__"]
 };
@@ -1915,7 +1913,7 @@ const DEVICE_CATEGORIES = {
     "Derivo 2heal (Acandis)","Surpass Elite (Stryker)"
   ],
   "Stent de soporte": [
-    "LEO Baby (Balt)","LEO (Balt)","LVIS Jr (MicroVention)","LVIS (MicroVention)",
+    "Solitaire AB stent (Medtronic)","LEO Baby (Balt)","LEO (Balt)","LVIS Jr (MicroVention)","LVIS (MicroVention)",
     "Neuroform Atlas (Stryker)","Accero (Acandis)","pCONUS 2 (Phenox)"
   ],
   "Dispositivo Intrasacular": [
@@ -1943,15 +1941,14 @@ const DEVICE_CATEGORIES = {
   ],
   "Microguia": [
     "Synchro (Stryker)","Traxcess (Stryker)","Mirage (Medtronic)",
-    "Chikai (Asahi)","Hybrid (Balt)","Avigo (Medtronic)"
+    "Chikai (Asahi)","Hybrid (Balt)","Avigo (Medtronic)","Xpedion (MicroVention)"
   ],
   "Liquido embólico": [
     "SQUID (Balt)","Onyx (Medtronic)","PHIL (MicroVention)"
   ],
   "Coils": ["Coils"],
   "Cateter de soporte / acceso": [
-    "Navien (Medtronic)","Benchmark (Penumbra)",
-    "Fargo / Fargo Max (Balt)","Cerebase DA (Cerenovus)"
+    "Navien (Medtronic)","Ballast (Balt)","Fubuki (Asahi)","Sofia (MicroVention)","Benchmark (Penumbra)","Fargo / Fargo Max (Balt)","Cerebase DA (Cerenovus)"
   ],
   "Otro": ["Otro"]
 };
@@ -2115,8 +2112,6 @@ function collectAll() {
     acceso: getVal("acceso"),
     introductor: getVal("introductor"),
     contraste_ml: getVal("contraste"),
-    fluoro_min: getVal("fluoro_time"),
-    dosis_mGy: getVal("dosis"),
     dispositivos: getDevices(),
     anticoag: getVal("anticoag"),
     antiplatelet: getChecks("antiplatelet_chk"),
