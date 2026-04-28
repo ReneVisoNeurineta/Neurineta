@@ -516,6 +516,58 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
 }
 .alert-badge.warn { background:var(--warm); color:#000; }
 
+.recert-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.recert-kpi .semaforo {
+  font-size: 1.6rem; line-height: 1;
+  flex-shrink: 0;
+}
+.recert-kpi .kpi-info { flex: 1; min-width: 0; }
+.recert-kpi .kpi-val-big {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 1.8rem; line-height: 1;
+}
+.recert-kpi .kpi-label-sm {
+  font-size: 0.62rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted);
+  font-weight: 700; margin-top: 0.1rem;
+}
+.recert-kpi .kpi-obj {
+  font-size: 0.6rem; color: var(--muted);
+  margin-top: 0.15rem;
+}
+.recert-kpi.green { border-left: 3px solid var(--success); }
+.recert-kpi.red { border-left: 3px solid var(--accent2); }
+.recert-kpi.green .kpi-val-big { color: var(--success); }
+.recert-kpi.red .kpi-val-big { color: var(--accent2); }
+.recert-kpi.neutral { border-left: 3px solid var(--muted); }
+.recert-kpi.neutral .kpi-val-big { color: var(--text); }
+
+.recert-table-el {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.75rem;
+}
+.recert-table-el th {
+  background: var(--primary); color: #fff;
+  padding: 0.5rem 0.8rem; text-align: left;
+  font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.recert-table-el td {
+  padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.recert-table-el tr:hover td { background: var(--surface2); }
+.badge-green { background:#0d2a1a; color:var(--success); font-size:0.65rem; font-weight:700; padding:0.15rem 0.5rem; border-radius:2px; }
+.badge-red { background:#2a0d0d; color:var(--accent2); font-size:0.65rem; font-weight:700; padding:0.15rem 0.5rem; border-radius:2px; }
+.badge-neutral { background:var(--surface2); color:var(--muted); font-size:0.65rem; font-weight:700; padding:0.15rem 0.5rem; border-radius:2px; }
+
 @media(max-width:640px) {
   .main { padding:1rem; }
   .form-grid-2, .form-grid-3, .form-grid-4 { grid-template-columns:1fr; }
@@ -2092,6 +2144,17 @@ function collectAll() {
     s_circ: getRadio("s_circ"),
     tandem: getRadio("tandem"),
     s_tec: getRadio("s_tec"),
+    s_unidad_stroke: getRadio("s_unidad_stroke"),
+    s_deglucion: getRadio("s_deglucion"),
+    s_rehab: getRadio("s_rehab"),
+    s_hic: getRadio("s_hic"),
+    s_craniectomia: getRadio("s_craniectomia"),
+    s_muerte_hosp: getRadio("s_muerte_hosp"),
+    s_antitrombotico: getRadio("s_antitrombótico"),
+    s_anticoag_alta: getRadio("s_anticoag_alta"),
+    s_mrs_3m: getVal("s_mrs_3m"),
+    s_compl_grave: getChecks("s_compl_grave"),
+    s_hora_puncion: getVal("s_hora_puncion"),
     // MAV
     sm: getRadio("sm"),
     elocuente: getRadio("elocuente"),
@@ -3590,6 +3653,7 @@ document.addEventListener("keydown", (e) => {
   <div class="dash-header">
     <h2>📊 Dashboard — La Neurineta</h2>
     <div class="dash-header-right">
+      <button class="btn-dash-refresh" onclick="showRecert()" style="background:#1a3a5c; color:#7fb3d3; border:1px solid #7fb3d3;">🏥 Recertificación WSO</button>
       <button class="btn-dash-refresh" onclick="loadDashboard()">↻ Actualizar</button>
       <button class="btn-dash-close" onclick="closeDashboard()">✕ Cerrar</button>
     </div>
@@ -3663,6 +3727,53 @@ document.addEventListener("keydown", (e) => {
         <div class="dash-card">
           <div class="dash-card-title">Dispositivos Más Usados</div>
           <ul class="dash-list" id="list-devices"></ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- RECERTIFICATION PANEL -->
+<div class="dash-overlay" id="recert-overlay" style="display:none;">
+  <div class="dash-header" style="background:#0a2a4a;">
+    <h2>🏥 Panel de Recertificación WSO/SIECV — Centro Avanzado</h2>
+    <div class="dash-header-right">
+      <select id="recert-year" onchange="renderRecert()" 
+        style="background:#1a3a5c; color:#fff; border:1px solid #7fb3d3; border-radius:4px; padding:0.3rem 0.7rem; font-family:var(--sans); font-size:0.75rem;">
+        <option value="all">Todo el período</option>
+        <option value="2026">2026</option>
+        <option value="2025">2025</option>
+        <option value="2024">2024</option>
+      </select>
+      <button class="btn-dash-refresh" onclick="exportRecert()">📋 Copiar Informe</button>
+      <button class="btn-dash-close" onclick="closeRecert()">✕ Cerrar</button>
+    </div>
+  </div>
+  <div class="dash-content">
+    <div id="recert-loading" class="dash-loading">
+      <div class="spinner"></div>Calculando indicadores...
+    </div>
+    <div id="recert-main" style="display:none">
+
+      <div style="background:#0d2a1a; border:1px solid #1a4a2a; border-radius:6px; padding:0.7rem 1rem; margin-bottom:1.2rem; font-size:0.72rem; color:#7fbf7f;">
+        ℹ️ Los indicadores se calculan con los casos de stroke cargados en la Neurineta. Campos como HIC, unidad de stroke y deglución deben estar completados para mayor precisión.
+      </div>
+
+      <!-- KPIs SEMAFORO -->
+      <div id="recert-kpis" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:0.8rem; margin-bottom:1.5rem;"></div>
+
+      <!-- TABLA INDICADORES -->
+      <div class="dash-card">
+        <div class="dash-card-title">📊 Registro de Indicadores de Calidad — Trombectomía Mecánica</div>
+        <div id="recert-table" style="overflow-x:auto;"></div>
+      </div>
+
+      <!-- INFORME TEXTO -->
+      <div class="dash-card" style="margin-top:1rem;">
+        <div class="dash-card-title">📄 Texto para Formulario WSO/SIECV</div>
+        <div id="recert-text" contenteditable="true"
+          style="font-family:'Courier New',monospace; font-size:0.75rem; color:var(--text); line-height:1.8; white-space:pre-wrap; background:var(--surface2); border-radius:4px; padding:1rem; min-height:200px;">
         </div>
       </div>
 
