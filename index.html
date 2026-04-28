@@ -2784,6 +2784,182 @@ function countUnique(records, field) {
   return new Set(records.map(r=>r[field]).filter(Boolean)).size;
 }
 
+
+// ============================================================
+// RECERTIFICATION PANEL — WSO/SIECV
+// ============================================================
+
+function showRecert() {
+  const overlay = document.getElementById("recert-overlay");
+  if (overlay) overlay.style.display = "block";
+  renderRecert();
+}
+
+function closeRecert() {
+  const overlay = document.getElementById("recert-overlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function getRecertYear() {
+  const sel = document.getElementById("recert-year");
+  return sel ? sel.value : "all";
+}
+
+function renderRecert() {
+  const loading = document.getElementById("recert-loading");
+  const main = document.getElementById("recert-main");
+  if (loading) loading.style.display = "block";
+  if (main) main.style.display = "none";
+
+  if (!dashData || dashData.length === 0) {
+    loadDashboard();
+    setTimeout(renderRecert, 2500);
+    return;
+  }
+
+  const year = getRecertYear();
+  let strokes = dashData.filter(r => r.procedimiento === "stroke" && r.tipo_registro !== "Control");
+  if (year !== "all") {
+    strokes = strokes.filter(r => {
+      const ts = getRecordDate(r);
+      return ts && ts.getFullYear() === parseInt(year);
+    });
+  }
+
+  const n = strokes.length;
+  if (n === 0) {
+    if (loading) loading.innerHTML = "<p style='color:var(--muted);text-align:center;padding:2rem'>Sin casos de stroke en el período.</p>";
+    return;
+  }
+
+  // ── CALCULATE INDICATORS ─────────────────────────────
+  const ppTimes = strokes.map(r => parseFloat(r.s_dingle)).filter(v => !isNaN(v) && v > 0 && v < 500);
+  const ptTimes = strokes.map(r => {
+    const pt = parseFloat(r.s_puerta_tici);
+    const pp = parseFloat(r.s_dingle);
+    if (!isNaN(pt) && !isNaN(pp) && pt > pp) return pt - pp;
+    const ptd = parseFloat(r.s_puncion_tici_min);
+    if (!isNaN(ptd) && ptd > 0) return ptd;
+    return null;
+  }).filter(v => v !== null && v > 0 && v < 300);
+
+  function median(arr) {
+    if (!arr.length) return null;
+    const s = [...arr].sort((a,b)=>a-b);
+    const m = Math.floor(s.length/2);
+    return s.length%2 ? s[m] : (s[m-1]+s[m])/2;
+  }
+
+  const medPP = median(ppTimes);
+  const medPT = median(ptTimes);
+  const pctPP120 = ppTimes.length > 0 ? Math.round(ppTimes.filter(v=>v<120).length/ppTimes.length*100) : null;
+  const pctPT60 = ptTimes.length > 0 ? Math.round(ptTimes.filter(v=>v<60).length/ptTimes.length*100) : null;
+
+  const ticiVals = strokes.filter(r => r.s_tici && r.s_tici !== "" && r.s_tici !== "undefined");
+  const ticiGood = ticiVals.filter(r => ["2B","2b","2C","2c","3","3.0"].includes(String(r.s_tici)));
+  const pctTICI = ticiVals.length > 0 ? Math.round(ticiGood.length/ticiVals.length*100) : null;
+
+  const hicCases = strokes.filter(r => r.s_hic === "Si");
+  const pctHIC = n > 0 ? Math.round(hicCases.length/n*100) : null;
+
+  const muerteCases = strokes.filter(r => r.s_muerte_hosp === "Si");
+  const pctMuerte = n > 0 ? Math.round(muerteCases.length/n*100) : null;
+
+  const mrs3m = strokes.filter(r => r.s_mrs_3m && r.s_mrs_3m !== "" && r.s_mrs_3m !== "undefined");
+  const mrsBueno = mrs3m.filter(r => ["0","1","2"].includes(String(r.s_mrs_3m)));
+  const pctMRS = mrs3m.length > 0 ? Math.round(mrsBueno.length/mrs3m.length*100) : null;
+
+  const unidadCases = strokes.filter(r => r.s_unidad_stroke === "Si");
+  const pctUnidad = n > 0 ? Math.round(unidadCases.length/n*100) : null;
+
+  const complGrave = strokes.filter(r => r.s_compl_grave && r.s_compl_grave !== "" && !r.s_compl_grave.includes("Ninguna"));
+  const pctCompl = n > 0 ? Math.round(complGrave.length/n*100) : null;
+
+  const INDICATORS = [
+    { id:1, label:"Total trombectomías", sub:"en el período", val:n, unit:"casos", obj:null, objLabel:"", dir:null },
+    { id:2, label:"Mediana Puerta–Punción", sub:`n=${ppTimes.length}`, val:medPP!==null?Math.round(medPP):null, unit:" min", obj:120, objLabel:"< 120 min", dir:"lt" },
+    { id:"2a", label:"Puerta–Punción < 120 min", sub:`${ppTimes.filter(v=>v<120).length}/${ppTimes.length}`, val:pctPP120, unit:"%", obj:50, objLabel:"≥ 50%", dir:"gte" },
+    { id:3, label:"Mediana Punción–Recanalización", sub:`n=${ptTimes.length}`, val:medPT!==null?Math.round(medPT):null, unit:" min", obj:60, objLabel:"< 60 min", dir:"lt" },
+    { id:"3a", label:"Punción–Recanalización < 60 min", sub:`${ptTimes.filter(v=>v<60).length}/${ptTimes.length}`, val:pctPT60, unit:"%", obj:50, objLabel:"≥ 50%", dir:"gte" },
+    { id:4, label:"TICI 2b/2c/3", sub:`${ticiGood.length}/${ticiVals.length}`, val:pctTICI, unit:"%", obj:70, objLabel:"≥ 70%", dir:"gte" },
+    { id:5, label:"HIC sintomática", sub:`${hicCases.length}/${n}`, val:pctHIC, unit:"%", obj:5, objLabel:"< 5%", dir:"lt" },
+    { id:6, label:"mRS 0–2 a 3 meses", sub:`${mrsBueno.length}/${mrs3m.length}`, val:pctMRS, unit:"%", obj:40, objLabel:"> 40%", dir:"gte" },
+    { id:7, label:"Mortalidad hospitalaria", sub:`${muerteCases.length}/${n}`, val:pctMuerte, unit:"%", obj:20, objLabel:"< 20%", dir:"lt" },
+    { id:8, label:"Admitidos Unidad de Stroke", sub:`${unidadCases.length}/${n}`, val:pctUnidad, unit:"%", obj:90, objLabel:"≥ 90%", dir:"gte" },
+    { id:9, label:"Complicaciones graves", sub:`${complGrave.length}/${n}`, val:pctCompl, unit:"%", obj:10, objLabel:"< 10%", dir:"lt" },
+  ];
+
+  function getStatus(ind) {
+    if (ind.val === null || ind.dir === null) return "neutral";
+    if (ind.dir === "lt") return ind.val < ind.obj ? "green" : "red";
+    if (ind.dir === "gte") return ind.val >= ind.obj ? "green" : "red";
+    return "neutral";
+  }
+
+  // KPIs
+  const kpiGrid = document.getElementById("recert-kpis");
+  if (kpiGrid) kpiGrid.innerHTML = INDICATORS.map(ind => {
+    const st = getStatus(ind);
+    const icon = st==="green"?"🟢":st==="red"?"🔴":"⚪";
+    return `<div class="recert-kpi ${st}">
+      <div class="semaforo">${icon}</div>
+      <div class="kpi-info">
+        <div class="kpi-val-big">${ind.val!==null?ind.val+ind.unit:"—"}</div>
+        <div class="kpi-label-sm">${ind.label}</div>
+        <div class="kpi-sub">${ind.sub}</div>
+        ${ind.objLabel?`<div class="kpi-obj">Objetivo: ${ind.objLabel}</div>`:""}
+      </div>
+    </div>`;
+  }).join("");
+
+  // Table
+  const tableDiv = document.getElementById("recert-table");
+  if (tableDiv) tableDiv.innerHTML = `<table class="recert-table-el">
+    <thead><tr><th>#</th><th>Indicador</th><th>Resultado</th><th>Objetivo</th><th>Estado</th></tr></thead>
+    <tbody>${INDICATORS.map(ind => {
+      const st = getStatus(ind);
+      const badge = st==="green"?`<span class="badge-green">✓ Cumple</span>`:
+                    st==="red"?`<span class="badge-red">✗ No cumple</span>`:
+                    `<span class="badge-neutral">Sin datos</span>`;
+      return `<tr>
+        <td style="font-weight:700;color:var(--muted)">${ind.id}</td>
+        <td>${ind.label}<br><span style="font-size:0.65rem;color:var(--muted)">${ind.sub}</span></td>
+        <td style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem">${ind.val!==null?ind.val+ind.unit:"—"}</td>
+        <td style="font-size:0.72rem;color:var(--muted)">${ind.objLabel||"—"}</td>
+        <td>${badge}</td>
+      </tr>`;
+    }).join("")}</tbody></table>`;
+
+  // Text
+  const yearLabel = getRecertYear()==="all"?"Período completo":getRecertYear();
+  const textDiv = document.getElementById("recert-text");
+  if (textDiv) textDiv.innerText = `REGISTRO DE INDICADORES — TROMBECTOMÍA MECÁNICA
+Centro: Hospital Privado de Comunidad — Mar del Plata
+Período: ${yearLabel}
+─────────────────────────────────────────────────────
+4. Nro pacientes sometidos a Trombectomía Mecánica: ${n}
+
+2.  Mediana Puerta–Punción: ${medPP!==null?Math.round(medPP)+" min":"Sin datos"} (obj: < 120 min)
+2a. % con Puerta–Punción < 120 min: ${pctPP120!==null?pctPP120+"%":"Sin datos"} (${ppTimes.filter(v=>v<120).length}/${ppTimes.length}) (obj: ≥ 50%)
+3.  Mediana Punción–Recanalización: ${medPT!==null?Math.round(medPT)+" min":"Sin datos"} (obj: < 60 min)
+3a. % con Punción–Recanalización < 60 min: ${pctPT60!==null?pctPT60+"%":"Sin datos"} (${ptTimes.filter(v=>v<60).length}/${ptTimes.length}) (obj: ≥ 50%)
+4.  TICI 2b/2c/3: ${pctTICI!==null?pctTICI+"%":"Sin datos"} (${ticiGood.length}/${ticiVals.length}) (obj: ≥ 70%)
+5.  HIC sintomática: ${pctHIC!==null?pctHIC+"%":"Sin datos"} (${hicCases.length}/${n}) (obj: < 5%)
+6.  mRS 0–2 a 3 meses: ${pctMRS!==null?pctMRS+"%":"Sin datos"} (${mrsBueno.length}/${mrs3m.length}) (obj: > 40%)
+7.  Mortalidad hospitalaria: ${pctMuerte!==null?pctMuerte+"%":"Sin datos"} (${muerteCases.length}/${n}) (obj: < 20%)`;
+
+  if (loading) loading.style.display = "none";
+  if (main) main.style.display = "block";
+}
+
+function exportRecert() {
+  const text = document.getElementById("recert-text").innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('#recert-overlay .btn-dash-refresh');
+    if (btn) { btn.textContent = "✓ Copiado"; setTimeout(()=>btn.textContent="📋 Copiar Informe",2000); }
+  });
+}
+
 // ============================================================
 // PROTOCOL GENERATION
 // ============================================================
